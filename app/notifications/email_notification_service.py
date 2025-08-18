@@ -273,6 +273,7 @@ body {font-family: 'Muli', sans-serif;}
 
 
 def send_notification_email(email_address: str, subject: str, flood_area_id: str, severity: str, message: str, colour):
+    #TODO: Create an unsubscribe link for any user who wishes to opt out of email notifications.
     url = FLOOD_MAP_HOST_NAME + "/" + flood_area_id
     content = email_template(severity=severity, message=message, url_to_flood=url, colour=colour)
     message = Mail(
