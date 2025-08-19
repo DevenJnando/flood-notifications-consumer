@@ -14,8 +14,8 @@ FLOOD_MAP_HOST_NAME = getenv('FLOOD_MAP_HOST_NAME')
 REPLY_EMAIL = getenv('SENDGRID_REPLY_EMAIL')
 
 
-def email_template(severity: str, message: str, url_to_flood: str, colour: str) -> str:
-    return (("""
+def email_template(description: str, severity: str, message: str, url_to_flood: str, colour: str) -> str:
+    return ("""
     <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html data-editor-version="2" class="sg-campaigns" xmlns="http://www.w3.org/1999/xhtml">
     <head>
@@ -182,13 +182,12 @@ body {font-family: 'Muli', sans-serif;}
     </tbody>
   </table><table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="948e3f3f-5214-4721-a90e-625a47b1c957" data-mc-module-version="2019-10-22">
     <tbody>
-      <tr>
       """
          +
-         f"<td style=\"padding:50px 30px 18px 30px; line-height:36px; text-align:inherit; background-color:#ffffff;\" height=\"100%\" valign=\"top\" bgcolor=\"#ffffff\" role=\"module-content\"><div><div style=\"font-family: inherit; text-align: center\"><span style=\"font-size: 43px\">{severity}</span></div><div></div></div></td>")
+             (f"<tr><td style=\"padding:50px 30px 18px 30px; line-height:36px; text-align:inherit; background-color:#ffffff;\" height=\"100%\" valign=\"top\" bgcolor=\"#ffffff\" role=\"module-content\"><div><div style=\"font-family: inherit; text-align: center\"><span style=\"font-size: 43px\">{description}</span></div><div></div></div></td></tr>"
+              f"<tr><td style=\"padding:50px 30px 18px 30px; line-height:36px; text-align:inherit; background-color:#ffffff;\" height=\"100%\" valign=\"top\" bgcolor=\"#ffffff\" role=\"module-content\"><div><div style=\"font-family: inherit; text-align: center\"><span style=\"font-size: 43px\">{severity}</span></div><div></div></div></td></tr>")
          +
     """
-      </tr>
     </tbody>
   </table><table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="a10dcb57-ad22-4f4d-b765-1d427dfddb4e" data-mc-module-version="2019-10-22">
     <tbody>
@@ -272,10 +271,11 @@ body {font-family: 'Muli', sans-serif;}
     """)
 
 
-def send_notification_email(email_address: str, subject: str, flood_area_id: str, severity: str, message: str, colour):
+def send_notification_email(email_address: str, subject: str, flood_area_id: str, description: str,
+                            severity: str, message: str, colour):
     #TODO: Create an unsubscribe link for any user who wishes to opt out of email notifications.
     url = FLOOD_MAP_HOST_NAME + "/" + flood_area_id
-    content = email_template(severity=severity, message=message, url_to_flood=url, colour=colour)
+    content = email_template(description= description, severity=severity, message=message, url_to_flood=url, colour=colour)
     message = Mail(
         from_email=FROM_EMAIL,
         to_emails=email_address,
