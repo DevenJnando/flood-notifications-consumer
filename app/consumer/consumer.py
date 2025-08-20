@@ -42,6 +42,7 @@ class Consumer:
 
     def stop_consuming(self):
         self.channel.stop_consuming()
+        self.connection.close()
 
 
     def callback(self, channel: BlockingChannel, method, properties: BasicProperties, body: bytes):
