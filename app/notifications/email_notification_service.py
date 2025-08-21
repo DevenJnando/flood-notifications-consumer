@@ -3,6 +3,7 @@
 
 from os import getenv
 from dotenv import load_dotenv
+from python_http_client import BadRequestsError
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, ReplyTo
 
@@ -288,5 +289,5 @@ def send_notification_email(email_address: str, subject: str, flood_area_id: str
         print(response.status_code)
         print(response.body)
         print(response.headers)
-    except Exception as e:
+    except BadRequestsError as e:
         raise e
