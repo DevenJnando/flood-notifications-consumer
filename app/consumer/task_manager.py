@@ -7,7 +7,6 @@ import pika
 from pika import BlockingConnection, BasicProperties
 from pika.adapters.blocking_connection import BlockingChannel
 from pika.exceptions import AMQPConnectionError
-from python_http_client import BadRequestsError
 
 from app.consumer.email_consumer import Consumer
 

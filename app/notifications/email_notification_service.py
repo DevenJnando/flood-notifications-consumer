@@ -15,7 +15,8 @@ FLOOD_MAP_HOST_NAME = getenv('FLOOD_MAP_HOST_NAME')
 REPLY_EMAIL = getenv('SENDGRID_REPLY_EMAIL')
 
 
-def email_template(description: str, severity: str, message: str, url_to_flood: str, colour: str) -> str:
+def email_template(description: str, severity: str, message: str, url_to_flood: str,
+                   unsubscribe_url: str, colour: str) -> str:
     return ("""
     <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html data-editor-version="2" class="sg-campaigns" xmlns="http://www.w3.org/1999/xhtml">
@@ -247,7 +248,9 @@ body {font-family: 'Muli', sans-serif;}
     </table></td>
       </tr>
     </tbody>
-  </table><div data-role="module-unsubscribe" class="module" role="module" data-type="unsubscribe" style="color:#444444; font-size:12px; line-height:20px; padding:16px 16px 16px 16px; text-align:Center;" data-muid="4e838cf3-9892-4a6d-94d6-170e474d21e5.1"><div class="Unsubscribe--addressLine"></div><p style="font-size:12px; line-height:20px;"><a class="Unsubscribe--unsubscribeLink" href="{{{unsubscribe}}}" target="_blank" style="">Unsubscribe</a></p></div></td>
+  </table> """ +
+  f"<div data-role=\"module-unsubscribe\" class=\"module\" role=\"module\" data-type=\"unsubscribe\" style=\"color:#444444; font-size:12px; line-height:20px; padding:16px 16px 16px 16px; text-align:Center;\" data-muid=\"4e838cf3-9892-4a6d-94d6-170e474d21e5.1\"><div class=\"Unsubscribe--addressLine\"></div><p style=\"font-size:12px; line-height:20px;\"><a class=\"Unsubscribe--unsubscribeLink\" href={unsubscribe_url} target=\"_blank\" style=\"\">Unsubscribe</a></p></div>"
+    + """ </td>
                                       </tr>
                                     </table>
                                     <!--[if mso]>
@@ -272,11 +275,12 @@ body {font-family: 'Muli', sans-serif;}
     """)
 
 
-def send_notification_email(email_address: str, subject: str, flood_area_id: str, description: str,
+def send_notification_email(subscriber_id: str, email_address: str, subject: str, flood_area_id: str, description: str,
                             severity: str, message: str, colour):
-    #TODO: Create an unsubscribe link for any user who wishes to opt out of email notifications.
-    url = FLOOD_MAP_HOST_NAME + "/" + flood_area_id
-    content = email_template(description= description, severity=severity, message=message, url_to_flood=url, colour=colour)
+    flood_url = FLOOD_MAP_HOST_NAME + "/" + flood_area_id
+    unsubscribe_url = FLOOD_MAP_HOST_NAME + "/notifications/unsubscribe?id=" + subscriber_id
+    content = email_template(description= description, severity=severity, message=message,
+                             url_to_flood=flood_url, unsubscribe_url=unsubscribe_url, colour=colour)
     message = Mail(
         from_email=FROM_EMAIL,
         to_emails=email_address,

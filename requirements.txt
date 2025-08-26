@@ -1,3 +1,5 @@
-sendgrid
-pika
-dotenv
+sendgrid~=6.12.4
+pika~=1.3.2
+dotenv~=0.9.9
+python-http-client~=3.3.7
+python-dotenv~=1.1.1

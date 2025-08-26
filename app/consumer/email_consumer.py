@@ -30,6 +30,7 @@ class Consumer(Process):
         self.dead_emails = logging.getLogger(__name__)
         self.max_messages = max_messages
         self.flood_key: str = "flood"
+        self.subscriber_id_key: str = "subscriber_id"
         self.subscriber_email_key: str = "subscriber_email"
         self.flood_area_id_key: str = "floodAreaID"
         self.flood_description_key: str = "description"
@@ -72,6 +73,7 @@ class Consumer(Process):
         try:
             deserialized_body: dict = json.loads(body.decode('utf-8'))
             deserialized_flood: dict = deserialized_body.get(self.flood_key)
+            deserialized_subscriber_id: str = deserialized_body.get(self.subscriber_id_key)
             deserialized_subscriber_email: str = deserialized_body.get(self.subscriber_email_key)
             flood_area_id: str = deserialized_flood.get(self.flood_area_id_key)
             flood_description: str = deserialized_flood.get(self.flood_description_key)
@@ -81,8 +83,8 @@ class Consumer(Process):
             subject_colour_tuple: tuple[str, str] = set_subject_and_colour(severity_level)
             subject: str = subject_colour_tuple[0]
             colour: str = subject_colour_tuple[1]
-            self.notify(method, properties, deserialized_subscriber_email, subject, flood_area_id,
-                        flood_description, severity, message, colour)
+            self.notify(method, properties, deserialized_subscriber_id, deserialized_subscriber_email,
+                        subject, flood_area_id, flood_description, severity, message, colour)
         except (AttributeError, ValueError) as e:
             self.dead_emails.error(f"One or more attempts to deserialize message failed. "
                                    f"Rejecting message as subsequent attempts will also fail."
@@ -90,10 +92,10 @@ class Consumer(Process):
             self.channel.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
 
 
-    def notify(self, method, properties: BasicProperties, email: str, subject: str,
+    def notify(self, method, properties: BasicProperties, subscriber_id:str, email: str, subject: str,
                flood_area_id: str, flood_description: str, severity: str, message: str, colour: str):
         try:
-            send_notification_email(email, subject, flood_area_id, flood_description,
+            send_notification_email(subscriber_id, email, subject, flood_area_id, flood_description,
                                     severity, message, colour)
             self.channel.basic_ack(delivery_tag=method.delivery_tag)
         except BadRequestsError:
