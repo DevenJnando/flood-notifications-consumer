@@ -5,9 +5,11 @@ import multiprocessing
 import pika
 from pika import BlockingConnection, BasicProperties
 from pika.adapters.blocking_connection import BlockingChannel
+from pika.credentials import PlainCredentials
 from pika.exceptions import AMQPConnectionError
 
 from app.consumer.email_consumer import Consumer
+from app.env_vars import rabbitmq_user, rabbitmq_password, rabbitmq_host, rabbitmq_port
 from app.logging.log import get_logger
 
 
@@ -52,7 +54,11 @@ class TaskManager:
         """
         self.no_of_tasks_key = "no_of_tasks"
         try:
-            self.connection: BlockingConnection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+            credentials: PlainCredentials = pika.PlainCredentials(username=rabbitmq_user, password=rabbitmq_password)
+            self.connection: BlockingConnection = pika.BlockingConnection(pika.ConnectionParameters(
+                host=rabbitmq_host,
+                port=rabbitmq_port,
+                credentials=credentials))
             self.channel: BlockingChannel = self.connection.channel()
             self.channel.queue_declare(queue='tasks', durable=True,
                                        arguments={"x-queue-type": "quorum"})
