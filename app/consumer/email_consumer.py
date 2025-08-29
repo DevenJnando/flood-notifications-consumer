@@ -1,5 +1,4 @@
 import json
-import logging
 
 import pika
 from pika.exceptions import AMQPConnectionError
@@ -14,15 +13,23 @@ from pika.spec import BasicProperties
 from app.notifications.email_notification_service import send_notification_email
 
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
-logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
-
-
 class Consumer(Process):
+    """
+    RabbitMQ Consumer object. Extends the Process class and runs on a dedicated core.
+    """
 
 
     def __init__(self, max_messages: int):
+        """
+        Initialize the Consumer object.
+
+        Keys for the relevant flood, flood severity,
+        severity level, flood description and flood message are initialized here.
+        Subscriber ID and email keys are also initialized.
+
+        A connection to the RabbitMQ broker can be established using credentials.
+        :param max_messages: The maximum number of messages to process before self-termination.
+        """
         Process.__init__(self)
         if max_messages <= 0:
             raise ValueError("max_messages must be a positive integer")
@@ -50,6 +57,13 @@ class Consumer(Process):
 
 
     def run(self):
+        """
+        Called upon initialization of the Consumer object.
+
+        Processes all messages from the queue until the max message limit is reached.
+        Self-terminates upon reaching the max message limit.
+        :return:
+        """
         current_message_count: int = 0
         for method_frame, properties, body in self.channel.consume(queue='email', inactivity_timeout=5):
             current_message_count += 1
@@ -64,11 +78,24 @@ class Consumer(Process):
 
 
     def stop_consuming(self):
+        """
+        Stop consuming from rabbitmq, close the connection and terminate process.
+        :return:
+        """
         self.channel.close()
         self.connection.close()
 
 
     def callback(self, method, properties: BasicProperties, body: bytes):
+        """
+        Callback which is called when a message is received.
+        Decodes and passes the message from the queue to the notify function.
+
+        :param method: Delivery and general message/queue information
+        :param properties: Optional properties from message
+        :param body: Contents of the message
+        :return:
+        """
         try:
             deserialized_body: dict = json.loads(body.decode('utf-8'))
             deserialized_flood: dict = deserialized_body.get(self.flood_key)
@@ -93,6 +120,22 @@ class Consumer(Process):
 
     def notify(self, method, properties: BasicProperties, subscriber_id:str, email: str, subject: str,
                flood_area_id: str, flood_description: str, severity: str, message: str, colour: str):
+        """
+        Takes decoded message information and sends it to the send_notification_email function.
+        Upon receipt, an email will be sent to the appropriate address along with all flood information.
+
+        :param method: Delivery and general message/queue information
+        :param properties: Optional properties from message
+        :param subscriber_id: Subscriber ID
+        :param email: Email address
+        :param subject: Email subject
+        :param flood_area_id: Flood area ID number
+        :param flood_description: Flood description
+        :param severity: Flood severity level
+        :param message: Flood message
+        :param colour: Colour to make the button which points to the flood map
+        :return:
+        """
         try:
             send_notification_email(subscriber_id, email, subject, flood_area_id, flood_description,
                                     severity, message, colour)

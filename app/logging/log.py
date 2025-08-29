@@ -2,7 +2,7 @@ import logging
 import os.path
 from logging.handlers import RotatingFileHandler
 
-from env_vars import *
+from app.env_vars import *
 
 log_name = 'flood-consumer-' + BUILD + ".log"
 log_path = os.path.expanduser('~') + "/" + LOG_FILE_LOCATION

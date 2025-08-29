@@ -1,5 +1,4 @@
 import json
-import logging
 import math
 import multiprocessing
 
@@ -16,6 +15,14 @@ MAX_TASKS_PER_QUEUE = 100
 
 
 def manage_workers(no_of_workers: int, tasks_per_worker: int):
+    """
+    Function which spins up the specified number of workers and gives each worker
+    the specified number of tasks.
+
+    :param no_of_workers: Number of workers to spawn
+    :param tasks_per_worker: Tasks per worker
+    :return:
+    """
     try:
         workers: list[Consumer] = []
         for i in range(no_of_workers):
@@ -33,9 +40,16 @@ def manage_workers(no_of_workers: int, tasks_per_worker: int):
 
 
 class TaskManager:
+    """
+    RabbitMQ Consumer Task Manager
+    """
 
 
     def __init__(self):
+        """
+        Initializes the Task Manager.
+        Establishes a connection to RabbitMQ using credentials.
+        """
         self.no_of_tasks_key = "no_of_tasks"
         try:
             self.connection: BlockingConnection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
@@ -49,18 +63,38 @@ class TaskManager:
 
 
     def consume(self):
+        """
+        Begins consuming messages from the queue
+        :return:
+        """
         self.channel.basic_qos(prefetch_count=1)
         self.channel.basic_consume(queue='tasks', auto_ack=False, on_message_callback=self.callback)
         self.channel.start_consuming()
 
 
     def stop_consuming(self):
+        """
+        Stops consuming from the queue, closes the connection and terminates.
+        :return:
+        """
         self.channel.stop_consuming()
         self.channel.close()
         self.connection.close()
 
 
     def callback(self, channel: BlockingChannel, method, properties: BasicProperties, body: bytes):
+        """
+        Callback function when a message is received from the queue.
+        Determines how many workers to spin up based on the total number of tasks (emails)
+        which need to be processed.
+        Then spins up the workers and divides the work amongst them.
+
+        :param channel: Channel where the message was received
+        :param method: Delivery and general message/queue information
+        :param properties: Optional properties from message
+        :param body: Contents of the message
+        :return:
+        """
         try:
             deserialized_body: dict = json.loads(body.decode('utf-8'))
             no_of_tasks: int = deserialized_body.get(self.no_of_tasks_key)

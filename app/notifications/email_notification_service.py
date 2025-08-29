@@ -6,7 +6,7 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, ReplyTo
 
 from app.logging.log import get_logger
-from env_vars import *
+from app.env_vars import *
 
 
 def email_template(description: str, severity: str, message: str, url_to_flood: str,
