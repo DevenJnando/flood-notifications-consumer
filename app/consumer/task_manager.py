@@ -9,17 +9,33 @@ from pika.adapters.blocking_connection import BlockingChannel
 from pika.exceptions import AMQPConnectionError
 
 from app.consumer.email_consumer import Consumer
+from app.logging.log import get_logger
 
 
 MAX_TASKS_PER_QUEUE = 100
+
+
+def manage_workers(no_of_workers: int, tasks_per_worker: int):
+    try:
+        workers: list[Consumer] = []
+        for i in range(no_of_workers):
+            worker: Consumer = Consumer(tasks_per_worker)
+            workers.append(worker)
+        for worker in workers:
+            try:
+                worker.start()
+            except Exception as e:
+                get_logger().error(e)
+    except AMQPConnectionError as e:
+        get_logger().error("Could not connect to rabbitmq. Ensure rabbitmq is running.\n"
+                          f"AMQPConnectionError: {e}")
+        raise e
 
 
 class TaskManager:
 
 
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
-        self.dead_messages = logging.getLogger(__name__)
         self.no_of_tasks_key = "no_of_tasks"
         try:
             self.connection: BlockingConnection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
@@ -27,7 +43,7 @@ class TaskManager:
             self.channel.queue_declare(queue='tasks', durable=True,
                                        arguments={"x-queue-type": "quorum"})
         except AMQPConnectionError as e:
-            self.logger.error("Could not connect to rabbitmq. Ensure rabbitmq is running.\n"
+            get_logger().error("Could not connect to rabbitmq. Ensure rabbitmq is running.\n"
                               f"AMQPConnectionError: {e}")
             raise e
 
@@ -52,27 +68,10 @@ class TaskManager:
             no_of_workers = no_of_workers if no_of_workers <= multiprocessing.cpu_count() else multiprocessing.cpu_count()
             tasks_per_worker: int = math.ceil(no_of_tasks / no_of_workers)
             channel.basic_ack(delivery_tag=method.delivery_tag)
-            self.manage_workers(no_of_workers, tasks_per_worker)
+            manage_workers(no_of_workers, tasks_per_worker)
         except (AttributeError, ValueError) as e:
-            self.dead_messages.error(f"Attempts to deserialize message failed. "
-                                     f"Rejecting message as subsequent attempts will also fail."
-                                     f"{e}")
+            get_logger().fatal(f"Attempts to deserialize message failed. "
+                               f"Rejecting message as subsequent attempts will also fail."
+                               f"{e}")
             channel.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
 
-
-    def manage_workers(self, no_of_workers: int, tasks_per_worker: int):
-        try:
-            workers: list[Consumer] = []
-            for i in range(no_of_workers):
-                worker: Consumer = Consumer(tasks_per_worker)
-                workers.append(worker)
-            for worker in workers:
-                try:
-                    worker.start()
-                    print(worker.pid)
-                except Exception as e:
-                    self.logger.error(e)
-        except AMQPConnectionError as e:
-            self.logger.error("Could not connect to rabbitmq. Ensure rabbitmq is running.\n"
-                              f"AMQPConnectionError: {e}")
-            raise e

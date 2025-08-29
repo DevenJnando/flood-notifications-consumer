@@ -1,0 +1,21 @@
+from os import getenv
+
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
+try:
+    API_KEY = getenv('SENDGRID_EMAIL_API_KEY')
+    FROM_EMAIL = getenv('SENDGRID_FROM_EMAIL')
+    FLOOD_MAP_HOST_NAME = getenv('FLOOD_MAP_HOST_NAME')
+    REPLY_EMAIL = getenv('SENDGRID_REPLY_EMAIL')
+    LOG_FILE_LOCATION = getenv('LOG_FILE_LOCATION')
+    BUILD = getenv('BUILD')
+except KeyError:
+    API_KEY = 'SENDGRID_EMAIL_API_KEY'
+    FROM_EMAIL = 'SENDGRID_FROM_EMAIL'
+    FLOOD_MAP_HOST_NAME = 'FLOOD_MAP_HOST_NAME'
+    REPLY_EMAIL = 'SENDGRID_REPLY_EMAIL'
+    LOG_FILE_LOCATION = 'LOG_FILE_LOCATION'
+    BUILD = 'BUILD'

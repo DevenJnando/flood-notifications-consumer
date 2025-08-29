@@ -1,18 +1,12 @@
 # using SendGrid's Python Library
 # https://github.com/sendgrid/sendgrid-python
 
-from os import getenv
-from dotenv import load_dotenv
 from python_http_client import BadRequestsError
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, ReplyTo
 
-load_dotenv()
-
-API_KEY = getenv('SENDGRID_EMAIL_API_KEY')
-FROM_EMAIL = getenv('SENDGRID_FROM_EMAIL')
-FLOOD_MAP_HOST_NAME = getenv('FLOOD_MAP_HOST_NAME')
-REPLY_EMAIL = getenv('SENDGRID_REPLY_EMAIL')
+from app.logging.log import get_logger
+from env_vars import *
 
 
 def email_template(description: str, severity: str, message: str, url_to_flood: str,
@@ -290,8 +284,10 @@ def send_notification_email(subscriber_id: str, email_address: str, subject: str
     try:
         sg = SendGridAPIClient(API_KEY)
         response = sg.send(message)
-        print(response.status_code)
-        print(response.body)
-        print(response.headers)
+        get_logger().info(f"Message sent to {email_address}")
+        get_logger().info(response.status_code)
+        get_logger().info(response.status_code)
+        get_logger().info(response.body)
+        get_logger().info(response.headers)
     except BadRequestsError as e:
-        raise e
+        get_logger().fatal(f"Bad Request Error: {e}")

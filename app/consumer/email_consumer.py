@@ -6,6 +6,7 @@ from pika.exceptions import AMQPConnectionError
 from python_http_client import BadRequestsError
 from multiprocessing import Process
 
+from app.logging.log import get_logger
 from app.utilities.utilities import set_subject_and_colour
 from pika.adapters.blocking_connection import BlockingConnection, BlockingChannel
 from pika.spec import BasicProperties
@@ -26,8 +27,6 @@ class Consumer(Process):
         if max_messages <= 0:
             raise ValueError("max_messages must be a positive integer")
         self.max_messages = max_messages
-        self.logger = logging.getLogger(__name__)
-        self.dead_emails = logging.getLogger(__name__)
         self.max_messages = max_messages
         self.flood_key: str = "flood"
         self.subscriber_id_key: str = "subscriber_id"
@@ -45,7 +44,7 @@ class Consumer(Process):
             self.email_queue = self.channel.queue_declare(queue='email', durable=True,
                                        arguments={"x-queue-type": "quorum"}, passive=True)
         except AMQPConnectionError as e:
-            self.logger.error("Could not connect to rabbitmq. Ensure rabbitmq is running.\n"
+            get_logger().error("Could not connect to rabbitmq. Ensure rabbitmq is running.\n"
                               f"AMQPConnectionError: {e}")
             raise e
 
@@ -58,7 +57,7 @@ class Consumer(Process):
                 self.callback(method_frame, properties, body)
             else:
                 break
-        self.logger.info("All messages processed")
+        get_logger().info("All messages processed")
         self.channel.cancel()
         self.stop_consuming()
         return 0
@@ -86,7 +85,7 @@ class Consumer(Process):
             self.notify(method, properties, deserialized_subscriber_id, deserialized_subscriber_email,
                         subject, flood_area_id, flood_description, severity, message, colour)
         except (AttributeError, ValueError) as e:
-            self.dead_emails.error(f"One or more attempts to deserialize message failed. "
+            get_logger().error(f"One or more attempts to deserialize message failed. "
                                    f"Rejecting message as subsequent attempts will also fail."
                                    f"{e}")
             self.channel.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
@@ -99,13 +98,13 @@ class Consumer(Process):
                                     severity, message, colour)
             self.channel.basic_ack(delivery_tag=method.delivery_tag)
         except BadRequestsError:
-            self.logger.error(f"Email notification service has failed for subscriber "
+            get_logger().error(f"Email notification service has failed for subscriber "
                               f"with the following email address: {email} \n")
             if properties.headers is None:
                 self.channel.basic_reject(delivery_tag=method.delivery_tag, requeue=True)
             elif properties.headers.get("x-delivery-count") < 20:
                 self.channel.basic_reject(delivery_tag=method.delivery_tag, requeue=True)
             else:
-                self.dead_emails.error(f"Message retry limit reached. Subscriber with email address "
+                get_logger().error(f"Message retry limit reached. Subscriber with email address "
                                        f"{email} could not be sent.")
                 self.channel.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
