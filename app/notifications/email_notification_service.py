@@ -289,5 +289,5 @@ def send_notification_email(subscriber_id: str, email_address: str, subject: str
         get_logger().info(response.status_code)
         get_logger().info(response.body)
         get_logger().info(response.headers)
-    except BadRequestsError as e:
+    except (BadRequestsError, KeyError) as e:
         get_logger().fatal(f"Bad Request Error: {e}")

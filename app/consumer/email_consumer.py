@@ -1,10 +1,12 @@
 import json
 
 import pika
+from pika.credentials import PlainCredentials
 from pika.exceptions import AMQPConnectionError
 from python_http_client import BadRequestsError
 from multiprocessing import Process
 
+from app.env_vars import rabbitmq_user, rabbitmq_host, rabbitmq_port, rabbitmq_password
 from app.logging.log import get_logger
 from app.utilities.utilities import set_subject_and_colour
 from pika.adapters.blocking_connection import BlockingConnection, BlockingChannel
@@ -44,7 +46,11 @@ class Consumer(Process):
         self.flood_severity_level_key: str = "severityLevel"
         self.flood_message_key: str = "message"
         try:
-            self.connection: BlockingConnection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+            credentials: PlainCredentials = pika.PlainCredentials(username=rabbitmq_user, password=rabbitmq_password)
+            self.connection: BlockingConnection = pika.BlockingConnection(pika.ConnectionParameters(
+                host=rabbitmq_host,
+                port=rabbitmq_port,
+                credentials=credentials))
             self.channel: BlockingChannel = self.connection.channel()
             self.channel.queue_declare(queue='email', durable=True,
                                        arguments={"x-queue-type": "quorum"})
@@ -115,10 +121,13 @@ class Consumer(Process):
             get_logger().error(f"One or more attempts to deserialize message failed. "
                                    f"Rejecting message as subsequent attempts will also fail."
                                    f"{e}")
-            self.channel.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
+            try:
+                self.channel.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
+            except AttributeError as e:
+                get_logger().error(f"Could not reject message as message method was empty. Nothing to reject: {e}")
 
 
-    def notify(self, method, properties: BasicProperties, subscriber_id:str, email: str, subject: str,
+    def notify(self, method, properties: BasicProperties, subscriber_id: str, email: str, subject: str,
                flood_area_id: str, flood_description: str, severity: str, message: str, colour: str):
         """
         Takes decoded message information and sends it to the send_notification_email function.
