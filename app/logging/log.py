@@ -29,5 +29,6 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 
-def get_logger():
+def get_logger(module_to_log: str):
+    logger.name = module_to_log
     return logger

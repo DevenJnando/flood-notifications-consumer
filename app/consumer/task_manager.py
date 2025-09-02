@@ -34,9 +34,9 @@ def manage_workers(no_of_workers: int, tasks_per_worker: int):
             try:
                 worker.start()
             except Exception as e:
-                get_logger().error(e)
+                get_logger(__name__).error(e)
     except AMQPConnectionError as e:
-        get_logger().error("Could not connect to rabbitmq. Ensure rabbitmq is running.\n"
+        get_logger(__name__).error("Could not connect to rabbitmq. Ensure rabbitmq is running.\n"
                           f"AMQPConnectionError: {e}")
         raise e
 
@@ -63,7 +63,7 @@ class TaskManager:
             self.channel.queue_declare(queue='tasks', durable=True,
                                        arguments={"x-queue-type": "quorum"})
         except AMQPConnectionError as e:
-            get_logger().error("Could not connect to rabbitmq. Ensure rabbitmq is running.\n"
+            get_logger(__name__).error("Could not connect to rabbitmq. Ensure rabbitmq is running.\n"
                               f"AMQPConnectionError: {e}")
             raise e
 
@@ -110,7 +110,7 @@ class TaskManager:
             channel.basic_ack(delivery_tag=method.delivery_tag)
             manage_workers(no_of_workers, tasks_per_worker)
         except (AttributeError, ValueError) as e:
-            get_logger().fatal(f"Attempts to deserialize message failed. "
+            get_logger(__name__).fatal(f"Attempts to deserialize message failed. "
                                f"Rejecting message as subsequent attempts will also fail."
                                f"{e}")
             channel.basic_reject(delivery_tag=method.delivery_tag, requeue=False)

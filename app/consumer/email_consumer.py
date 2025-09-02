@@ -36,7 +36,7 @@ class Consumer(Process):
         if max_messages <= 0:
             raise ValueError("max_messages must be a positive integer")
         self.max_messages = max_messages
-        self.max_messages = max_messages
+        self.current_message_count = 0
         self.flood_key: str = "flood"
         self.subscriber_id_key: str = "subscriber_id"
         self.subscriber_email_key: str = "subscriber_email"
@@ -57,7 +57,7 @@ class Consumer(Process):
             self.email_queue = self.channel.queue_declare(queue='email', durable=True,
                                        arguments={"x-queue-type": "quorum"}, passive=True)
         except AMQPConnectionError as e:
-            get_logger().error("Could not connect to rabbitmq. Ensure rabbitmq is running.\n"
+            get_logger(__name__).error("Could not connect to rabbitmq. Ensure rabbitmq is running.\n"
                               f"AMQPConnectionError: {e}")
             raise e
 
@@ -70,14 +70,16 @@ class Consumer(Process):
         Self-terminates upon reaching the max message limit.
         :return:
         """
-        current_message_count: int = 0
+        get_logger(__name__).info(f"Beginning processing of {self.max_messages} messages "
+                                  f"on worker number {self.pid}.")
         for method_frame, properties, body in self.channel.consume(queue='email', inactivity_timeout=5):
-            current_message_count += 1
-            if current_message_count <= self.max_messages:
+            self.current_message_count += 1
+            if self.current_message_count <= self.max_messages:
                 self.callback(method_frame, properties, body)
+                get_logger(__name__).info(f"Processed {self.current_message_count} of {self.max_messages} messages.")
             else:
                 break
-        get_logger().info("All messages processed")
+        get_logger(__name__).info("All messages processed")
         self.channel.cancel()
         self.stop_consuming()
         return 0
@@ -118,13 +120,13 @@ class Consumer(Process):
             self.notify(method, properties, deserialized_subscriber_id, deserialized_subscriber_email,
                         subject, flood_area_id, flood_description, severity, message, colour)
         except (AttributeError, ValueError) as e:
-            get_logger().error(f"One or more attempts to deserialize message failed. "
+            get_logger(__name__).error(f"One or more attempts to deserialize message failed. "
                                    f"Rejecting message as subsequent attempts will also fail."
                                    f"{e}")
             try:
                 self.channel.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
             except AttributeError as e:
-                get_logger().error(f"Could not reject message as message method was empty. Nothing to reject: {e}")
+                get_logger(__name__).error(f"Could not reject message as message method was empty. Nothing to reject: {e}")
 
 
     def notify(self, method, properties: BasicProperties, subscriber_id: str, email: str, subject: str,
@@ -150,13 +152,16 @@ class Consumer(Process):
                                     severity, message, colour)
             self.channel.basic_ack(delivery_tag=method.delivery_tag)
         except BadRequestsError:
-            get_logger().error(f"Email notification service has failed for subscriber "
+            get_logger(__name__).error(f"Email notification service has failed for subscriber "
                               f"with the following email address: {email} \n")
             if properties.headers is None:
                 self.channel.basic_reject(delivery_tag=method.delivery_tag, requeue=True)
             elif properties.headers.get("x-delivery-count") < 20:
                 self.channel.basic_reject(delivery_tag=method.delivery_tag, requeue=True)
             else:
-                get_logger().error(f"Message retry limit reached. Subscriber with email address "
-                                       f"{email} could not be sent.")
-                self.channel.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
+                if method.delivery_tag is not None:
+                    get_logger(__name__).error(f"Message retry limit reached. Subscriber with email address "
+                                           f"{email} could not be sent.")
+                    self.channel.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
+                else:
+                    self.current_message_count = self.max_messages

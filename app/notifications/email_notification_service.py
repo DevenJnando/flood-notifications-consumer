@@ -284,10 +284,10 @@ def send_notification_email(subscriber_id: str, email_address: str, subject: str
     try:
         sg = SendGridAPIClient(API_KEY)
         response = sg.send(message)
-        get_logger().info(f"Message sent to {email_address}")
-        get_logger().info(response.status_code)
-        get_logger().info(response.status_code)
-        get_logger().info(response.body)
-        get_logger().info(response.headers)
+        get_logger(__name__).info(f"Message sent to {email_address}")
+        get_logger(__name__).info(response.status_code)
+        get_logger(__name__).info(response.status_code)
+        get_logger(__name__).info(response.body)
+        get_logger(__name__).info(response.headers)
     except (BadRequestsError, KeyError) as e:
-        get_logger().fatal(f"Bad Request Error: {e}")
+        get_logger(__name__).fatal(f"Bad Request Error: {e}")
