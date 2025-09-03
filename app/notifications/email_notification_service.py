@@ -271,7 +271,7 @@ body {font-family: 'Muli', sans-serif;}
 
 def send_notification_email(subscriber_id: str, email_address: str, subject: str, flood_area_id: str, description: str,
                             severity: str, message: str, colour):
-    flood_url = FLOOD_MAP_HOST_NAME + "/" + flood_area_id
+    flood_url = FLOOD_MAP_HOST_NAME + "/?id=" + flood_area_id
     unsubscribe_url = FLOOD_MAP_HOST_NAME + "/notifications/unsubscribe?id=" + subscriber_id
     content = email_template(description= description, severity=severity, message=message,
                              url_to_flood=flood_url, unsubscribe_url=unsubscribe_url, colour=colour)
@@ -289,5 +289,7 @@ def send_notification_email(subscriber_id: str, email_address: str, subject: str
         get_logger(__name__).info(response.status_code)
         get_logger(__name__).info(response.body)
         get_logger(__name__).info(response.headers)
-    except (BadRequestsError, KeyError) as e:
+    except BadRequestsError as e:
         get_logger(__name__).fatal(f"Bad Request Error: {e}")
+    except KeyError as e:
+        get_logger(__name__).fatal(f"Key Error: {e}")
