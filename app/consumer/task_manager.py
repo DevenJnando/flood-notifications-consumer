@@ -105,6 +105,9 @@ class TaskManager:
             deserialized_body: dict = json.loads(body.decode('utf-8'))
             no_of_tasks: int = deserialized_body.get(self.no_of_tasks_key)
             no_of_workers: int = math.ceil(no_of_tasks / MAX_TASKS_PER_QUEUE)
+            if no_of_workers == 0:
+                get_logger(__name__).info("No tasks to process. Waiting for next cycle...")
+                return
             no_of_workers = no_of_workers if no_of_workers <= multiprocessing.cpu_count() else multiprocessing.cpu_count()
             tasks_per_worker: int = math.ceil(no_of_tasks / no_of_workers)
             channel.basic_ack(delivery_tag=method.delivery_tag)
